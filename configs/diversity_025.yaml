@@ -1,0 +1,28 @@
+﻿dataset:
+  name: FashionMNIST
+  data_root: data
+  train_fraction: 0.25
+  val_size: 10000
+  augment: true
+
+model:
+  name: small_cnn
+  num_classes: 10
+  dropout_p: 0.5
+
+training:
+  epochs: 30
+  batch_size: 128
+  optimizer: adam
+  learning_rate: 0.001
+  weight_decay: 0.0001
+
+selector:
+  method: diversity
+  score_every: 3
+  warmup_epochs: 1
+
+experiment:
+  id: E001
+  seed: 42
+  results_dir: results

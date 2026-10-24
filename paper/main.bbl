@@ -1,0 +1,92 @@
+\begin{thebibliography}{14}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bengio et~al.(2009)Bengio, Louradour, Collobert, and Weston]{bengio2009curriculum}
+Yoshua Bengio, J{\'e}r{\^o}me Louradour, Ronan Collobert, and Jason Weston.
+\newblock Curriculum learning.
+\newblock \emph{Proceedings of the 26th Annual International Conference on Machine Learning}, pages 41--48, 2009.
+\newblock URL \url{https://dl.acm.org/doi/10.1145/1553374.1553380}.
+
+\bibitem[Ghorbani and Zou(2019)]{ghorbani2019shapley}
+Amirata Ghorbani and James Zou.
+\newblock Data shapley: Equitable valuation of data for machine learning.
+\newblock In \emph{International Conference on Machine Learning}, pages 2242--2251. PMLR, 2019.
+\newblock URL \url{https://arxiv.org/abs/1904.02868}.
+
+\bibitem[Jiang et~al.(2014)Jiang, Meng, Mitamura, and Hauptmann]{jiang2014spld}
+Lu~Jiang, Deyu Meng, Teruko Mitamura, and Alexander~G. Hauptmann.
+\newblock Self-paced learning with diversity.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~27, 2014.
+\newblock URL \url{https://papers.nips.cc/paper/2014/hash/c60d060b946d6dd6145dcbad5c4ccf6f-Abstract.html}.
+
+\bibitem[Jiang et~al.(2015)Jiang, Meng, Zhao, Shan, and Hauptmann]{jiang2015self}
+Lu~Jiang, Deyu Meng, Qian Zhao, Shiguang Shan, and Alexander~G. Hauptmann.
+\newblock Self-paced curriculum learning.
+\newblock In \emph{Proceedings of the AAAI Conference on Artificial Intelligence}, volume~29, 2015.
+\newblock URL \url{https://ojs.aaai.org/index.php/AAAI/article/view/9608}.
+
+\bibitem[Kumar et~al.(2010)Kumar, Packer, and Koller]{kumar2010selfpaced}
+M.~P. Kumar, Benjamin Packer, and Daphne Koller.
+\newblock Self-paced learning for latent variable models.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~23, 2010.
+\newblock URL \url{https://papers.nips.cc/paper/2010/hash/e57c6b956a6521b28495f2886ca0977a-Abstract.html}.
+
+\bibitem[Lin et~al.(2017)Lin, Goyal, Girshick, He, and Doll{\'a}r]{lin2017focal}
+Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Doll{\'a}r.
+\newblock Focal loss for dense object detection.
+\newblock In \emph{Proceedings of the IEEE International Conference on Computer Vision}, pages 2980--2988, 2017.
+\newblock URL \url{https://arxiv.org/abs/1708.02002}.
+
+\bibitem[Mirzasoleiman et~al.(2020)Mirzasoleiman, Bilmes, and Leskovec]{mirzasoleiman2020craig}
+Baharan Mirzasoleiman, Jeff Bilmes, and Jure Leskovec.
+\newblock Coresets for data-efficient training of machine learning models.
+\newblock In \emph{International Conference on Machine Learning}, pages 6950--6960. PMLR, 2020.
+\newblock URL \url{https://proceedings.mlr.press/v119/mirzasoleiman20a.html}.
+
+\bibitem[Ren et~al.(2021)Ren, Xiao, Chang, Huang, Li, Gupta, Chen, and Wang]{ren2021survey}
+Pengzhen Ren, Yun Xiao, Xiaojun Chang, Po-Yao Huang, Zhihui Li, Brij~B Gupta, Xiaojiang Chen, and Xin Wang.
+\newblock A survey of deep active learning.
+\newblock \emph{ACM Computing Surveys}, 54\penalty0 (9):\penalty0 1--40, 2021.
+\newblock URL \url{https://arxiv.org/abs/2009.00236}.
+
+\bibitem[Settles(2009)]{settles2009active}
+Burr Settles.
+\newblock Active learning literature survey.
+\newblock \emph{University of Wisconsin-Madison Faculty of Computer Sciences}, 2009.
+\newblock URL \url{http://burrsettles.com/pub/settles.activelearning.pdf}.
+
+\bibitem[Shrivastava et~al.(2016)Shrivastava, Gupta, and Girshick]{shrivastava2016ohem}
+Abhinav Shrivastava, Abhinav Gupta, and Ross Girshick.
+\newblock Training region-based object detectors with online hard example mining.
+\newblock In \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, pages 761--769, 2016.
+\newblock URL \url{https://arxiv.org/abs/1604.03540}.
+
+\bibitem[Sorscher et~al.(2022)Sorscher, Geirhos, Vyas, Ganguli, and Morcos]{sorscher2022beyond}
+Ben Sorscher, Robert Geirhos, Shashank Vyas, Surya Ganguli, and Ari~S. Morcos.
+\newblock Beyond neural scaling laws: Beating power law scaling via data pruning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35:\penalty0 19523--19536, 2022.
+\newblock URL \url{https://arxiv.org/abs/2206.14486}.
+
+\bibitem[Toneva et~al.(2019)Toneva, Sordoni, des Combes, Trischler, Bengio, and Gordon]{toneva2019forgetting}
+Mariya Toneva, Alessandro Sordoni, Remi~Tachet des Combes, Adam Trischler, Yoshua Bengio, and Geoffrey~J. Gordon.
+\newblock An empirical study of example forgetting during deep neural network learning.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+\newblock URL \url{https://arxiv.org/abs/1901.12350}.
+
+\bibitem[Xiao et~al.(2017)Xiao, Rasul, and Vollgraf]{xiao2017fashionmnist}
+Han Xiao, Kashif Rasul, and Roland Vollgraf.
+\newblock {Fashion-MNIST}: a novel image dataset for benchmarking machine learning algorithms.
+\newblock \emph{arXiv preprint arXiv:1708.07747}, 2017.
+\newblock URL \url{https://arxiv.org/abs/1708.07747}.
+
+\bibitem[Zhao and Zhang(2015)]{zhao2015importance}
+Peilin Zhao and Tong Zhang.
+\newblock Stochastic optimization with importance sampling for regularized loss minimization.
+\newblock In \emph{International Conference on Machine Learning}, pages 1--9. PMLR, 2015.
+\newblock URL \url{https://proceedings.mlr.press/v37/zhaoc15.html}.
+
+\end{thebibliography}

@@ -1,0 +1,451 @@
+\documentclass[10pt,twocolumn]{article}
+
+% -----------------------------------------------------------------------
+% Packages
+% -----------------------------------------------------------------------
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{caption}
+
+% -----------------------------------------------------------------------
+% Custom commands
+% -----------------------------------------------------------------------
+\newcommand{\tbdsection}[1]{\textcolor{gray}{[TBD: #1]}}
+\newcommand{\tbd}[1]{\textcolor{red}{\textbf{[TBD: #1]}}}
+
+% -----------------------------------------------------------------------
+% Document metadata
+% -----------------------------------------------------------------------
+\title{%
+  Learning What to Learn:\\
+  Adaptive Sample Selection for Efficient Neural Network Training
+}
+
+\author{%
+  [Author Name]\\
+  \textit{Department of Artificial Intelligence, [University]}\\
+  \texttt{[email@university.edu]}
+}
+
+\date{September 2026}
+
+% -----------------------------------------------------------------------
+\begin{document}
+% -----------------------------------------------------------------------
+
+\maketitle
+
+% -----------------------------------------------------------------------
+\begin{abstract}
+% -----------------------------------------------------------------------
+Training neural networks on large datasets is increasingly expensive.
+Not all training samples contribute equally to learning at every stage
+of training. We investigate whether \emph{adaptive sample selection}---
+choosing which examples to train on based on per-sample difficulty,
+uncertainty, and feature-space diversity---can improve training efficiency
+compared to uniform random sampling under a fixed data budget.
+
+We propose a lightweight, forward-pass-only adaptive selector that
+combines cross-entropy loss, softmax entropy, and feature-space diversity
+with a phase-dependent mixing schedule.
+We implement four baselines (random, difficulty-only, uncertainty-only,
+diversity-only) and evaluate all methods on Fashion-MNIST~\citep{xiao2017fashionmnist}
+using a compact CNN under data budgets of 10\%--100\% of the training pool,
+with three random seeds per configuration.
+
+Our experiments suggest \tbd{results pending E001--E005}. We further
+present an ablation study isolating the contribution of each selection
+signal, and a failure analysis characterising conditions under which
+adaptive selection degrades relative to random sampling.
+
+All code, configs, and raw results are publicly available at
+\url{https://github.com/[username]/adaptive-sample-selection}.
+\end{abstract}
+
+% -----------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+% -----------------------------------------------------------------------
+
+Modern neural network training can be computationally expensive, even for
+moderate-scale datasets.
+A standard training run processes every training example once per epoch,
+treating all samples as equally informative.
+However, empirical evidence suggests this is not the case: some examples
+are learned quickly and never forgotten, while others remain persistently
+difficult throughout training~\citep{toneva2019forgetting}.
+
+This raises a natural question: \emph{can we select which examples to
+include in each training step, and in what order, to make learning
+more efficient?}
+
+A long line of work addresses related problems.
+Curriculum learning~\citep{bengio2009curriculum} orders examples by
+pre-defined difficulty.
+Self-paced learning~\citep{kumar2010selfpaced} determines difficulty
+dynamically from model loss.
+Active learning~\citep{ren2021survey} selects which examples to
+\emph{label}; in our setting, labels are available for all data.
+Coreset selection~\citep{mirzasoleiman2020craig} finds representative
+subsets; our approach is lighter-weight and operates online.
+
+\paragraph{Research question.}
+Can lightweight adaptive sample selection improve training efficiency---
+measured as validation accuracy per unit of data seen---compared to
+uniform random sampling, when all methods operate under the same fixed
+data budget?
+
+\paragraph{Contributions.}
+We make the following contributions:
+\begin{enumerate}
+  \item A modular, reproducible framework for comparing sample-selection
+    strategies under fixed data budgets.
+  \item A controlled empirical study on Fashion-MNIST across five methods,
+    five budget levels, and three random seeds.
+  \item A lightweight adaptive selector combining difficulty, uncertainty,
+    and diversity with a phase-dependent schedule.
+  \item An ablation study and failure analysis documenting when adaptive
+    selection helps and when it does not.
+\end{enumerate}
+
+We do not claim algorithmic novelty over the existing literature.
+Our contribution is primarily \emph{empirical}: a rigorous, reproducible
+comparison under a CPU-scale setting that is underrepresented in the literature.
+
+% -----------------------------------------------------------------------
+\section{Related Work}
+\label{sec:related}
+% -----------------------------------------------------------------------
+
+\paragraph{Curriculum learning.}
+\citet{bengio2009curriculum} showed that presenting examples from easy to
+hard improves convergence and generalisation. The curriculum is pre-defined
+and not adaptive to the model state.
+
+\paragraph{Self-paced learning.}
+\citet{kumar2010selfpaced} introduced SPL, which jointly learns model
+parameters and example selection weights using a regularised objective.
+\citet{jiang2015self} extended this with a pre-defined curriculum prior
+(SPCL). \citet{jiang2014spld} added a diversity constraint (SPLD),
+directly motivating our proposed method.
+
+\paragraph{Hard example mining.}
+\citet{shrivastava2016ohem} selects highest-loss samples per batch in
+detection (OHEM). \citet{lin2017focal} achieves similar effects through
+a differentiable loss reweighting (Focal Loss). Both focus on difficulty
+without diversity.
+
+\paragraph{Coreset selection.}
+\citet{mirzasoleiman2020craig} treats subset selection as submodular
+optimisation, approximating the full gradient with a small representative
+set. This is powerful but requires gradient computation over the full pool---
+expensive for CPU-only settings.
+
+\paragraph{Training dynamics.}
+\citet{toneva2019forgetting} showed that many training examples are
+redundant: once learned, they are never forgotten and can be removed
+without accuracy loss. This motivates our difficulty/loss-based scoring.
+
+\paragraph{Data valuation.}
+\citet{ghorbani2019shapley} use Shapley values to assess individual data
+point importance, but exact computation is prohibitive. We use tractable
+proxies: loss and entropy.
+
+\paragraph{Data pruning.}
+\citet{sorscher2022beyond} demonstrate that selecting harder, less-central
+examples outperforms random pruning at small data fractions---directly
+relevant to our small-budget experiments.
+
+\paragraph{Importance sampling.}
+\citet{zhao2015importance} show that non-uniform sampling proportional to
+gradient norm yields provably faster convergence, providing theoretical
+justification for our loss-based scoring.
+
+Our work differs from active learning~\citep{settles2009active} in that
+all labels are available; we select for training efficiency, not annotation
+efficiency.
+
+% -----------------------------------------------------------------------
+\section{Problem Formulation}
+\label{sec:problem}
+% -----------------------------------------------------------------------
+
+Let $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ be the full training pool,
+and let $f_\theta$ be a neural network with parameters $\theta$.
+We define a \emph{data budget} $B \in (0, 1]$ such that each epoch
+selects $n = \lfloor B \cdot N \rfloor$ samples from $\mathcal{D}$.
+
+A \emph{selector} $\pi: \mathcal{D} \times f_\theta \times t \to \mathcal{I}$
+maps the current model state and training time $t$ to a set of $n$ indices
+$\mathcal{I} \subset [N]$, $|\mathcal{I}| = n$.
+
+The training objective is:
+\begin{equation}
+  \theta^* = \arg\min_\theta \mathbb{E}_{i \sim \pi} [\ell(f_\theta(x_i), y_i)]
+\end{equation}
+where $\ell$ is cross-entropy loss.
+
+\paragraph{Efficiency metric.}
+Our primary measure is validation accuracy $a(s)$ as a function of
+cumulative training samples seen $s$. A method $\pi$ is more efficient
+than random baseline $\pi_0$ if, for some target accuracy $a^*$:
+\begin{equation}
+  s_\pi(a^*) < s_{\pi_0}(a^*)
+\end{equation}
+where $s_\pi(a^*)$ is the number of samples seen to first achieve $a^*$.
+
+% -----------------------------------------------------------------------
+\section{Method}
+\label{sec:method}
+% -----------------------------------------------------------------------
+
+\subsection{Sample Scoring}
+
+For each sample $x_i$ at epoch $t$, we compute three scores using only
+forward passes (no gradient computation beyond the training update):
+
+\paragraph{Difficulty $D_i(t)$.}
+The normalised per-sample cross-entropy loss:
+\begin{equation}
+  D_i(t) = \frac{\ell_i(t) - \min_j \ell_j(t)}{\max_j \ell_j(t) - \min_j \ell_j(t) + \epsilon}
+\end{equation}
+where $\ell_i(t) = -\log p_\theta(y_i | x_i)$ at epoch $t$.
+High $D_i$ indicates the model currently finds $x_i$ difficult.
+
+\paragraph{Uncertainty $U_i(t)$.}
+The normalised softmax entropy:
+\begin{equation}
+  U_i(t) = \frac{H_i(t) - \min_j H_j(t)}{\max_j H_j(t) - \min_j H_j(t) + \epsilon}
+\end{equation}
+where $H_i(t) = -\sum_c p_\theta(c|x_i) \log p_\theta(c|x_i)$.
+High $U_i$ indicates the model is uncertain about the class of $x_i$.
+
+\paragraph{Diversity $V_i(t)$.}
+The normalised minimum distance from sample $x_i$'s feature representation
+to the nearest previously-selected centroid:
+\begin{equation}
+  V_i(t) = \frac{d_i(t) - \min_j d_j(t)}{\max_j d_j(t) - \min_j d_j(t) + \epsilon}
+\end{equation}
+where $d_i(t) = \min_{c \in C_{t-1}} \| \phi(x_i) - c \|_2$,
+$\phi(x_i)$ is the penultimate-layer feature, and $C_{t-1}$ is the set of
+selected sample features from the previous epoch.
+
+\subsection{Adaptive Selection Policy}
+
+The combined score for sample $x_i$ at epoch $t$ is:
+\begin{equation}
+  S(x_i, t) = \alpha(t) \cdot D_i(t) + \beta(t) \cdot U_i(t) + \gamma(t) \cdot V_i(t)
+  \label{eq:score}
+\end{equation}
+where $\alpha(t), \beta(t), \gamma(t) \geq 0$ are phase-dependent weights
+with $\alpha + \beta + \gamma = 1$.
+
+\paragraph{Phase schedule.}
+We use a three-phase schedule motivated by curriculum learning:
+\begin{align}
+  \text{Phase 1 (epochs 1--10):} &\quad (\alpha, \beta, \gamma) = (0.2, 0.2, 0.6) \\
+  \text{Phase 2 (epochs 11--20):} &\quad (\alpha, \beta, \gamma) = (0.4, 0.4, 0.2) \\
+  \text{Phase 3 (epochs 21+):} &\quad (\alpha, \beta, \gamma) = (0.5, 0.4, 0.1)
+\end{align}
+Early training emphasises diversity (broad exploration of the feature space).
+Late training emphasises difficulty (focus on boundary-clarifying examples).
+Ablation experiments (Section~\ref{sec:ablation}) validate this schedule.
+
+\paragraph{Selection rule.}
+Select the top-$n$ samples by score $S(x_i, t)$:
+\begin{equation}
+  \mathcal{I}_t = \operatorname*{arg\,top}_n \{ S(x_i, t) : i \in [N] \}
+\end{equation}
+
+\paragraph{Computational cost.}
+One forward pass over the pool: $\mathcal{O}(N)$.
+Sorting: $\mathcal{O}(N \log N)$.
+Diversity scoring (over candidate subset): $\mathcal{O}(n \cdot |\mathcal{C}|)$.
+Memory: $\mathcal{O}(N \cdot D)$ for the feature matrix.
+
+Setting score\_every $= 1$ recomputes scores each epoch (highest quality,
+highest overhead). Setting score\_every $= k$ reduces overhead by $k\times$
+with a slight staleness penalty.
+
+\subsection{Baselines}
+
+We compare against four baselines:
+\begin{enumerate}
+  \item \textbf{Random} ($\pi_\text{rand}$): uniform sampling without replacement.
+  \item \textbf{Difficulty} ($\pi_D$): top-$n$ by $D_i(t)$ alone.
+  \item \textbf{Uncertainty} ($\pi_U$): top-$n$ by $U_i(t)$ alone.
+  \item \textbf{Diversity} ($\pi_V$): k-means clustering; select nearest-to-centroid from each cluster.
+\end{enumerate}
+
+% -----------------------------------------------------------------------
+\section{Experimental Setup}
+\label{sec:setup}
+% -----------------------------------------------------------------------
+
+\subsection{Dataset}
+We use Fashion-MNIST~\citep{xiao2017fashionmnist}: 60,000 training images
+and 10,000 test images, 28$\times$28 grayscale, 10 balanced classes.
+We split training into a pool of 50,000 and a validation set of 10,000
+(stratified by class). The test set is used only for final evaluation.
+
+\subsection{Model}
+Our primary architecture (SmallCNN) is a compact CNN with two
+convolutional blocks (32 and 64 channels) followed by a fully-connected
+classifier (~450k parameters). A secondary MLP (~235k parameters) is used
+for robustness experiments (Section~\tbd{E010}).
+
+\subsection{Training Protocol}
+All methods use identical training protocols:
+\begin{itemize}
+  \item Optimiser: Adam ($\text{lr}=10^{-3}$, weight decay $10^{-4}$)
+  \item Batch size: 128
+  \item Epochs: 30
+  \item Data augmentation: random horizontal flip (training only)
+\end{itemize}
+
+\subsection{Data Budgets}
+Budget $B \in \{0.10, 0.25, 0.50, 0.75, 1.00\}$.
+At budget $B$, each epoch selects $n = B \times 50\,000$ samples.
+All methods receive exactly $n$ samples per epoch.
+
+\subsection{Evaluation}
+Three random seeds per configuration (42, 123, 777).
+We report mean $\pm$ standard deviation across seeds.
+Primary metric: validation accuracy at equal cumulative samples seen.
+Secondary metrics: macro F1, wall-clock time, gradient updates.
+
+\subsection{Hardware}
+All experiments run on a CPU-only Intel laptop (8 cores, 8.3\,GB RAM).
+No GPU is used, ensuring results are reproducible without specialist hardware.
+
+% -----------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+% -----------------------------------------------------------------------
+
+\tbd{Results pending completion of experiments E001--E005.
+Table~\ref{tab:main} and Figures~\ref{fig:curves}--\ref{fig:pareto}
+will be populated from results/processed/mean\_std.csv after all runs complete.}
+
+\begin{table}[t]
+  \centering
+  \caption{Validation accuracy (mean $\pm$ std, 3 seeds) by method and data budget.}
+  \label{tab:main}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Method & 10\% & 25\% & 50\% & 100\% \\
+    \midrule
+    Random      & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+    Difficulty  & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+    Uncertainty & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+    Diversity   & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+    Adaptive    & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------
+\section{Ablation Study}
+\label{sec:ablation}
+% -----------------------------------------------------------------------
+
+\tbd{Ablation results pending E006. Will compare all 7 component combinations
+(D only, U only, V only, D+U, D+V, U+V, D+U+V) at budget 25\%.}
+
+% -----------------------------------------------------------------------
+\section{Failure Analysis}
+\label{sec:failure}
+% -----------------------------------------------------------------------
+
+\tbd{Failure analysis pending E007--E009. Will report performance under:
+(a) 10\% and 20\% label noise, (b) 5:1 class imbalance, (c) 30\% duplicate data.}
+
+\paragraph{Anticipated failure modes.}
+Based on theory and related work, we anticipate the following:
+
+\begin{enumerate}
+  \item \textbf{Label noise amplification}: The difficulty selector is expected
+    to over-select mislabelled examples (high loss $\not\Rightarrow$ informative).
+    The adaptive selector's diversity component may partially mitigate this.
+  \item \textbf{Class imbalance}: A purely difficulty-based selector may over-select
+    the minority class (harder to classify). Diversity mitigates this by enforcing
+    coverage across feature clusters.
+  \item \textbf{Redundant data}: The difficulty selector may repeatedly select
+    the same hard examples, wasting the budget on redundant samples.
+\end{enumerate}
+
+% -----------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+% -----------------------------------------------------------------------
+
+\tbd{Discussion pending experimental results.}
+
+\paragraph{If H1 is supported (adaptive $>$ random at small budgets):}
+This would confirm that lightweight, forward-pass-only selection provides
+a meaningful efficiency advantage over random sampling on Fashion-MNIST.
+
+\paragraph{If H2 is supported (difficulty hurt at 10\% budget):}
+This would be a useful negative result, warning practitioners against
+naive hard-example mining when the training pool may contain noisy examples
+and when diversity is critical at very small budgets.
+
+\paragraph{If H0 is not rejected (no significant advantage):}
+This would be a valid scientific result suggesting that for small, balanced
+datasets like Fashion-MNIST, adaptive selection overhead does not justify
+the gains, and random sampling should be preferred for simplicity.
+
+% -----------------------------------------------------------------------
+\section{Limitations}
+\label{sec:limitations}
+% -----------------------------------------------------------------------
+
+\begin{enumerate}
+  \item \textbf{Single dataset}: All primary experiments use Fashion-MNIST.
+    Results may not generalise to larger datasets or more complex vision tasks.
+  \item \textbf{CPU-only training}: Wall-clock time comparisons are specific
+    to our hardware. GPU experiments may show different overhead characteristics.
+  \item \textbf{Three seeds}: Statistical power is limited. We report
+    mean $\pm$ std but acknowledge that larger-scale replication is desirable.
+  \item \textbf{Hyperparameter sensitivity}: The phase schedule weights
+    ($\alpha, \beta, \gamma$) are fixed from preliminary ablation. They may
+    not be optimal for other datasets or architectures.
+  \item \textbf{Tractable proxies}: We use loss and entropy as proxies for
+    true data importance. Shapley values or gradient-based methods may provide
+    better estimates at higher computational cost.
+\end{enumerate}
+
+% -----------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+% -----------------------------------------------------------------------
+
+\tbd{Conclusion pending experimental results.}
+
+We present a controlled empirical study of lightweight adaptive sample selection
+for efficient neural network training under fixed data budgets.
+Our proposed method combines per-sample difficulty, uncertainty, and feature-space
+diversity signals with a phase-dependent schedule, motivated by the Self-Paced
+Learning with Diversity framework~\citep{jiang2014spld} and curriculum learning
+principles~\citep{bengio2009curriculum}.
+
+The primary findings of this study will determine whether \tbd{H1 or H0}.
+
+Regardless of outcome, this work establishes a reusable framework and a
+reproducible baseline for CPU-scale adaptive sample selection research---
+a contribution accessible to undergraduate researchers without specialist hardware.
+
+% -----------------------------------------------------------------------
+\bibliographystyle{plainnat}
+\bibliography{references}
+% -----------------------------------------------------------------------
+
+\end{document}
