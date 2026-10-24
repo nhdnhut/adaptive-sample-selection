@@ -1,4 +1,4 @@
-# Learning What to Learn: Adaptive Sample Selection for Efficient Neural Network Training
+﻿# Learning What to Learn: Adaptive Sample Selection for Efficient Neural Network Training
 
 > A rigorous, reproducible research project investigating whether adaptive sample selection can make neural network training more data- and compute-efficient than uniform random sampling.
 
@@ -42,20 +42,20 @@ python scripts/generate_figures.py
 
 ```
 paper/
-├── src/
-│   ├── data/           Dataset loading and splitting
-│   ├── models/         SmallCNN, SmallMLP
-│   ├── selectors/      Random, Difficulty, Uncertainty, Diversity, Adaptive
-│   ├── training/       Main training loop (Trainer)
-│   ├── metrics/        Accuracy, F1, per-class evaluation
-│   └── utils/          Config, logging, reproducibility
-├── configs/            YAML configs for all 25 method×budget combinations
-├── scripts/            train.py, run_experiment_suite.py, aggregate_results.py, generate_figures.py
-├── tests/              49 tests covering all modules
-├── results/            raw CSVs, processed summaries, experiment tables
-├── figures/            Publication figures (generated from results)
-├── docs/               Literature review, research gap, hypotheses, experimental plan
-└── paper/              LaTeX paper (main.tex, references.bib)
+â”œâ”€â”€ src/
+â”‚   â”œâ”€â”€ data/           Dataset loading and splitting
+â”‚   â”œâ”€â”€ models/         SmallCNN, SmallMLP
+â”‚   â”œâ”€â”€ selectors/      Random, Difficulty, Uncertainty, Diversity, Adaptive
+â”‚   â”œâ”€â”€ training/       Main training loop (Trainer)
+â”‚   â”œâ”€â”€ metrics/        Accuracy, F1, per-class evaluation
+â”‚   â””â”€â”€ utils/          Config, logging, reproducibility
+â”œâ”€â”€ configs/            YAML configs for all 25 methodÃ—budget combinations
+â”œâ”€â”€ scripts/            train.py, run_experiment_suite.py, aggregate_results.py, generate_figures.py
+â”œâ”€â”€ tests/              49 tests covering all modules
+â”œâ”€â”€ results/            raw CSVs, processed summaries, experiment tables
+â”œâ”€â”€ figures/            Publication figures (generated from results)
+â”œâ”€â”€ docs/               Literature review, research gap, hypotheses, experimental plan
+â””â”€â”€ paper/              LaTeX paper (main.tex, references.bib)
 ```
 
 ## Methods
@@ -104,7 +104,7 @@ Every experiment saves:
 - Run summary JSON
 - Random seed used
 
-Results are always generated from raw data — no manually edited values.
+Results are always generated from raw data â€” no manually edited values.
 
 ## Paper
 
@@ -127,5 +127,6 @@ MIT
 
 ## Author and Attribution
 
-- Author: Nguyen Huynh Dang Nhut (@nhutnhd)
+- Author: Nguyen Huynh Dang Nhut (@nhdnhut)
 - Faculty of Computer Science, University of Information Technology (UIT, VNU-HCM)
+
