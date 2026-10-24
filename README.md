@@ -1,7 +1,11 @@
 # Learning What to Learn: Adaptive Sample Selection for Efficient Neural Network Training
 
-A rigorous, reproducible research project investigating whether adaptive sample selection
-can make neural network training more data- and compute-efficient than uniform random sampling.
+> A rigorous, reproducible research project investigating whether adaptive sample selection can make neural network training more data- and compute-efficient than uniform random sampling.
+
+[![Python](https://img.shields.io/badge/Python-3.12+-brightgreen?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Tests](https://img.shields.io/badge/Tests-49%20Passed-brightgreen?style=flat-square)](tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 **Research question:** Can lightweight adaptive sample selection improve training efficiency
 (validation accuracy per training sample seen) compared to random sampling under a fixed data budget?
